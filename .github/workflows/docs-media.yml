@@ -31,6 +31,9 @@ jobs:
           php-version: '8.3'
           coverage: none
 
+      - name: Install media tooling
+        run: sudo apt-get update && sudo apt-get install --yes imagemagick
+
       - name: Capture screenshots and GIF
         run: bash scripts/capture-doc-media.sh
 
