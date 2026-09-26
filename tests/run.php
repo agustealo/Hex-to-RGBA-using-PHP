@@ -80,6 +80,16 @@ test('explicit alpha overrides embedded alpha', static function (): void {
     assert_same('rgb(37 99 235 / 0.2)', hex2css('#2563eb80', 0.2));
 });
 
+test('preserves small explicit alpha precision', static function (): void {
+    assert_same('rgb(0 0 0 / 0.0004)', hex2css('#000', 0.0004));
+    assert_same('rgba(0, 0, 0, 0.0004)', hex2rgba('#000', 0.0004));
+});
+
+test('preserves near-opaque explicit alpha precision', static function (): void {
+    assert_same('rgb(255 255 255 / 0.9999)', hex2css('#fff', 0.9999));
+    assert_same('rgba(255, 255, 255, 0.9999)', hex2rgba('#fff', 0.9999));
+});
+
 test('components expose alpha provenance', static function (): void {
     $components = hex2rgba_components('#09f8');
 
