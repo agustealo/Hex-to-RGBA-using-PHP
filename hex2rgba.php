@@ -87,7 +87,7 @@ function hex2rgba(string $hex, ?float $alpha = null): string
         $color['red'],
         $color['green'],
         $color['blue'],
-        format_alpha($resolved_alpha)
+        format_alpha($resolved_alpha, $alpha === null && $color['has_alpha'])
     );
 }
 
@@ -108,7 +108,7 @@ function hex2css(string $hex, ?float $alpha = null): string
         $color['red'],
         $color['green'],
         $color['blue'],
-        format_alpha($resolved_alpha)
+        format_alpha($resolved_alpha, $alpha === null && $color['has_alpha'])
     );
 }
 
@@ -123,12 +123,22 @@ function validate_alpha(float $alpha): void
 }
 
 /**
- * Format alpha without noisy trailing zeros while keeping useful precision.
+ * Format an alpha value without changing caller-supplied precision.
+ *
+ * Alpha decoded from #RGBA / #RRGGBBAA has only 8-bit source precision, so
+ * three decimal places are sufficient for that representation. Explicit
+ * float arguments are serialized losslessly enough to round-trip as floats.
  */
-function format_alpha(float $alpha): string
+function format_alpha(float $alpha, bool $from_embedded_byte = false): string
 {
-    $formatted = number_format($alpha, 3, '.', '');
-    $formatted = rtrim(rtrim($formatted, '0'), '.');
+    if ($from_embedded_byte) {
+        $formatted = number_format($alpha, 3, '.', '');
+        $formatted = rtrim(rtrim($formatted, '0'), '.');
 
-    return $formatted === '' ? '0' : $formatted;
+        return $formatted === '' ? '0' : $formatted;
+    }
+
+    $formatted = json_encode($alpha, JSON_THROW_ON_ERROR);
+
+    return $formatted;
 }
