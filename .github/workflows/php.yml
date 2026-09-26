@@ -35,5 +35,8 @@ jobs:
       - name: Lint demo
         run: php -l demo/index.php
 
+      - name: Lint WordPress integration example
+        run: php -l examples/wordpress-theme/functions.php
+
       - name: Run regression tests
         run: php tests/run.php
