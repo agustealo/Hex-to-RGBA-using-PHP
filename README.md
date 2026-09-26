@@ -249,6 +249,22 @@ http://127.0.0.1:8080
 
 Change the hex value and alpha level, submit the form, and the page will show the normalized channels plus both modern and legacy CSS forms.
 
+### Demo preview
+
+The animation below is generated from the real standalone PHP demo in this repository, not from a mock or design comp.
+
+![Hex-to-RGBA conversion flow](docs/media/gifs/conversion-flow.gif)
+
+A successful conversion exposes the normalized channels and both CSS output forms:
+
+![Converted color result](docs/media/screenshots/demo-converted.png)
+
+Malformed input is rejected visibly instead of being coerced into an unexpected color:
+
+![Invalid color validation state](docs/media/screenshots/demo-validation.png)
+
+The untouched initial state is also kept at [`docs/media/screenshots/demo-default.png`](docs/media/screenshots/demo-default.png). These media files are reproducibly captured by [`scripts/capture-doc-media.sh`](scripts/capture-doc-media.sh) and the [`Documentation Media`](.github/workflows/docs-media.yml) workflow whenever the demo, converter, or capture tooling changes.
+
 ## API reference
 
 ### `normalize_hex_color(string $hex): string`
