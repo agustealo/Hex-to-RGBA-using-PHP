@@ -1,225 +1,300 @@
-# Dynamic CSS: Converting Hex to RGBA using PHP
+# Hex to RGB/RGBA with PHP
 
-In this tutorial I will guide you through the script, step-by-step on creating a dynamic CSS setup where you can convert hex color codes to RGBA using PHP. This approach allows you to manage colors in your theme more efficiently, especially when you need different opacity levels of the same color.
+A small, framework-agnostic tutorial and utility for turning CSS hexadecimal colors into validated RGB/RGBA values with PHP.
 
-## Table of Contents
+The original version of this repository demonstrated a useful idea: take a hex color on the server and expose its RGB channels so the same color can be reused at different opacity levels. The web platform has moved forward since then, so this version teaches the same concept using modern PHP and modern CSS without pretending PHP is required for every transparency use case.
 
-1. [Introduction](#introduction)
-2. [Prerequisites](#prerequisites)
-3. [Setup](#setup)
-4. [Creating the PHP Function](#creating-the-php-function)
-5. [Using the Function in CSS](#using-the-function-in-css)
-6. [Example Use Case](#example-use-case)
-7. [Conclusion](#conclusion)
+## What this tutorial covers
 
-## Introduction
+- `#RGB`, `#RGBA`, `#RRGGBB`, and `#RRGGBBAA`
+- strict validation instead of silently accepting malformed colors
+- extracting numeric RGBA components
+- preserving an alpha channel embedded in 4- or 8-digit hex
+- overriding alpha from PHP when needed
+- modern CSS Color 4 output: `rgb(37 99 235 / 0.25)`
+- legacy `rgba(...)` output when you explicitly need it
+- safe server-generated CSS variables
+- a zero-dependency test runner
+- an interactive standalone demo
 
-In web development, managing colors dynamically can save time and ensure consistency. By converting hex colors to RGBA using PHP, you can create reusable color variables that can easily adapt to different opacity levels. This is particularly useful for theming and styling in WordPress.
+## Requirements
 
-## Prerequisites
+- PHP 8.0 or newer
+- no framework
+- no Composer packages
 
-- Basic knowledge of PHP and CSS.
-- A working WordPress theme where you can add custom PHP and CSS.
+`str_starts_with()` is used by the utility and is available in PHP 8+.
 
-## Setup
+## Why convert colors in PHP today?
 
-1. **Create a New PHP File**: If you don't already have a functions.php file in your WordPress theme, create one. This file will contain our PHP function for converting hex to RGB.
-
-2. **Create CSS Files**: Ensure you have a style.css file for basic styles and a theme.css file for theme-specific styles.
-
-## Creating the PHP Function
-
-Let's start by creating a PHP function that converts a hex color code to RGB. This function will be used to generate RGBA colors dynamically.
-
-```php
-<?php
-function hex2rgb($hex) {
-    $hex = str_replace("#", "", $hex);
-    if(strlen($hex) == 3) {
-        $r = hexdec(substr($hex,0,1).substr($hex,0,1));
-        $g = hexdec(substr($hex,1,1).substr($hex,1,1));
-        $b = hexdec(substr($hex,2,1).substr($hex,2,1));
-    } else {
-        $r = hexdec(substr($hex,0,2));
-        $g = hexdec(substr($hex,2,2));
-        $b = hexdec(substr($hex,4,2));
-    }
-    return implode(", ", [$r, $g, $b]);
-}
-?>
-```
-
-This function takes a hex color code as input and returns a string with the RGB values.
-
-## Using the Function in CSS
-
-Now, we'll use this function to create CSS variables in your WordPress theme. These variables will be used to style your theme dynamically.
-
-### Step 1: Define Your PHP Variables
-
-In your functions.php file, define the color variables you want to use:
-
-```php
-<?php
-$primary_color = "#3498db";
-$secondary_color = "#2ecc71";
-$border_color = "#e74c3c";
-?>
-```
-
-### Step 2: Generate CSS Variables
-
-Use the hex2rgb function to convert these hex colors to RGB and define the CSS variables:
-
-```php
-<style>
-:root {
-    --primary-color: <?php echo $primary_color; ?>;
-    --secondary-color: <?php echo $secondary_color; ?>;
-    --border-color: <?php echo $border_color; ?>;
-    
-    /* RGB Colors */
-    --primary-color-rgb: <?php echo hex2rgb($primary_color); ?>;
-    --secondary-color-rgb: <?php echo hex2rgb($secondary_color); ?>;
-    --border-color-rgb: <?php echo hex2rgb($border_color); ?>;
-    
-    /* Transparent Versions */
-    --primary-color-transparent: rgba(var(--primary-color-rgb), 0.1); /* 10% opacity */
-    --secondary-color-transparent: rgba(var(--secondary-color-rgb), 0.1); /* 10% opacity */
-    --border-color-transparent: rgba(var(--border-color-rgb), 0.1); /* 10% opacity */
-}
-</style>
-```
-
-### Step 3: Use CSS Variables in Your Styles
-
-In your CSS files (style.css and theme.css), use these variables to style your elements:
+Modern CSS already supports alpha directly:
 
 ```css
-body {
-    font-family: var(--primary-font);
-    color: var(--primary-color);
-}
-
-.search-form {
-    background-color: var(--border-color-transparent);
-}
-
-.button {
-    background-color: var(--primary-color);
-    color: var(--secondary-color);
-}
-
-.button:hover {
-    background-color: var(--primary-color-transparent);
-}
+color: #2563eb80;
+background: rgb(37 99 235 / 0.5);
 ```
 
-## Example Use Case
+So you should not round-trip a hard-coded CSS color through PHP just to make it transparent.
 
-Let's create a simple search form and button styled with these dynamic colors.
+PHP conversion becomes useful when a color originates on the server, for example:
 
-### HTML
+- application configuration
+- database-backed user preferences
+- tenant or brand settings
+- generated email or document styles
+- API payloads that must be normalized before rendering
+- server-side design tokens
 
-Add the following HTML to your WordPress theme file:
+In those cases, validation and normalization matter just as much as conversion.
 
-```html
-<form class="search-form" action="/" method="get">
-    <input class="search-field" type="text" name="s" placeholder="Search...">
-    <button class="wp-block-search__button" type="submit">Search</button>
-</form>
+## The utility
 
-<button class="button">Click Me</button>
-```
-
-### CSS
-
-Use the CSS defined earlier to style the form and button:
-
-```css
-.search-form {
-    display: flex;
-    padding: 8px;
-    border: 2px solid var(--border-color);
-    border-radius: 4px;
-    background-color: var(--border-color-transparent);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    transition: box-shadow 0.3s ease-in-out;
-}
-
-.search-field {
-    flex-grow: 1;
-    margin-right: 8px;
-    padding: 10px;
-    border: none;
-    border-radius: 4px 0 0 4px;
-    font-size: 1rem;
-    outline: none;
-    background-color: #fff;
-    color: #333;
-    transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
-}
-
-.search-field::placeholder {
-    color: #999;
-}
-
-.search-field:focus {
-    background-color: #fff;
-    color: #333;
-    box-shadow: 0 0 0 2px var(--link-color);
-}
-
-.wp-block-search__inside-wrapper .wp-block-search__button {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 0 4px 4px 0;
-    background-color: var(--button-bg-color);
-    color: var(--button-text-color);
-    cursor: pointer;
-    transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
-}
-
-.wp-block-search__inside-wrapper .wp-block-search__button:hover {
-    background-color: var(--button-hover-color);
-    color: #fff;
-}
-```
-
-### PHP
-
-Ensure the PHP to generate the styles is included in your theme's header.php or a similar file:
+The complete implementation lives in [`hex2rgba.php`](hex2rgba.php).
 
 ```php
 <?php
-$primary_color = "#3498db";
-$secondary_color = "#2ecc71";
-$border_color = "#e74c3c";
+
+declare(strict_types=1);
+
+require __DIR__ . '/hex2rgba.php';
+
+echo hex2rgb('#2563eb');
+// 37, 99, 235
+
+echo hex2rgba('#2563eb', 0.25);
+// rgba(37, 99, 235, 0.25)
+
+echo hex2css('#2563eb', 0.25);
+// rgb(37 99 235 / 0.25)
+```
+
+The modern CSS form is preferred for newly generated CSS:
+
+```php
+$color = hex2css('#2563eb', 0.25);
+```
+
+Result:
+
+```css
+rgb(37 99 235 / 0.25)
+```
+
+## Supported hexadecimal formats
+
+| Input | Meaning | Normalized channels |
+| --- | --- | --- |
+| `#09f` | short RGB | `0, 153, 255` |
+| `#09f8` | short RGBA | `0, 153, 255` + embedded alpha |
+| `#0099ff` | RGB | `0, 153, 255` |
+| `#0099ff88` | RGBA | `0, 153, 255` + embedded alpha |
+
+The leading `#` is optional when passing a value to the PHP utility, but generated CSS examples use normal CSS syntax with `#`.
+
+## Embedded alpha versus an explicit alpha
+
+Four- and eight-digit hex colors already contain alpha information.
+
+```php
+echo hex2css('#2563eb80');
+// rgb(37 99 235 / 0.502)
+```
+
+You can deliberately override it:
+
+```php
+echo hex2css('#2563eb80', 0.2);
+// rgb(37 99 235 / 0.2)
+```
+
+Three- and six-digit colors default to fully opaque when no alpha is supplied:
+
+```php
+echo hex2css('#2563eb');
+// rgb(37 99 235 / 1)
+```
+
+## Reading the numeric channels
+
+When you need data rather than a CSS string, use `hex2rgba_components()`:
+
+```php
+$color = hex2rgba_components('#2563ebcc');
+
+var_export($color);
+```
+
+Output:
+
+```php
+[
+    'red'       => 37,
+    'green'     => 99,
+    'blue'      => 235,
+    'alpha'     => 0.8,
+    'has_alpha' => true,
+]
+```
+
+This is useful when the channels feed another renderer, serializer, image operation, or CSS token generator.
+
+## Generate CSS variables from server-side colors
+
+Suppose an application stores a brand color in configuration:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+require __DIR__ . '/hex2rgba.php';
+
+$brand = '#2563eb';
+$brandSoft = hex2css($brand, 0.12);
+$brandHover = hex2css($brand, 0.85);
 ?>
 
 <style>
 :root {
-    --primary-color: <?php echo $primary_color; ?>;
-    --secondary-color: <?php echo $secondary_color; ?>;
-    --border-color: <?php echo $border_color; ?>;
-    
-    /* RGB Colors */
-    --primary-color-rgb: <?php echo hex2rgb($primary_color); ?>;
-    --secondary-color-rgb: <?php echo hex2rgb($secondary_color); ?>;
-    --border-color-rgb: <?php echo hex2rgb($border_color); ?>;
-    
-    /* Transparent Versions */
-    --primary-color-transparent: rgba(var(--primary-color-rgb), 0.1); /* 10% opacity */
-    --secondary-color-transparent: rgba(var(--secondary-color-rgb), 0.1); /* 10% opacity */
-    --border-color-transparent: rgba(var(--border-color-rgb), 0.1); /* 10% opacity */
+    --brand: <?= htmlspecialchars($brand, ENT_QUOTES, 'UTF-8') ?>;
+    --brand-soft: <?= htmlspecialchars($brandSoft, ENT_QUOTES, 'UTF-8') ?>;
+    --brand-hover: <?= htmlspecialchars($brandHover, ENT_QUOTES, 'UTF-8') ?>;
 }
 </style>
 ```
 
-## Conclusion
+Then ordinary CSS consumes the generated values:
 
-By using PHP to convert hex colors to RGB and creating dynamic CSS variables, you can efficiently manage and use colors in your WordPress theme. This approach helps maintain consistency, simplifies color management, and allows for easy adjustments to transparency and other properties.
+```css
+.card {
+    border: 1px solid var(--brand);
+    background: var(--brand-soft);
+}
 
-You can extend this approach with more colors and variables to suit your theme's needs. This method ensures your CSS remains DRY (Don't Repeat Yourself) and maintainable.
+.card a {
+    color: var(--brand);
+}
 
-@gustealo https://agustealo.com/
+.card a:hover {
+    color: var(--brand-hover);
+}
+```
+
+The important boundary is that the PHP utility validates the color before it becomes CSS.
+
+## Invalid input fails loudly
+
+The original implementation treated almost anything longer than three characters as six-digit input. That can produce surprising values from malformed data.
+
+The current implementation accepts only valid 3-, 4-, 6-, or 8-digit hexadecimal color strings:
+
+```php
+try {
+    echo hex2css('#12-not-a-color');
+} catch (InvalidArgumentException $exception) {
+    echo $exception->getMessage();
+}
+```
+
+Alpha must also be finite and between `0` and `1`:
+
+```php
+hex2css('#2563eb', 1.5);
+// throws InvalidArgumentException
+```
+
+## `rgb()` or `rgba()`?
+
+For modern CSS, prefer:
+
+```css
+rgb(37 99 235 / 0.25)
+```
+
+The `rgba()` function is now effectively an alias of `rgb()` in CSS. This repository keeps `hex2rgba()` because the project name and historical API are useful, while `hex2css()` emits the cleaner modern syntax for new code.
+
+## Run the tests
+
+No test framework is required:
+
+```bash
+php tests/run.php
+```
+
+The test runner covers:
+
+- short and long RGB input
+- short and long RGBA input
+- embedded alpha
+- explicit alpha override
+- modern and legacy CSS output
+- case normalization
+- invalid lengths
+- invalid characters
+- invalid alpha ranges
+
+## Run the interactive demo
+
+From the repository root:
+
+```bash
+php -S 127.0.0.1:8080 -t demo
+```
+
+Open:
+
+```text
+http://127.0.0.1:8080
+```
+
+Change the hex value and alpha level, submit the form, and the page will show the normalized channels plus both modern and legacy CSS forms.
+
+### Demo preview
+
+The animation below is generated from the real standalone PHP demo in this repository, not from a mock or design comp.
+
+![Hex-to-RGBA conversion flow](docs/media/gifs/conversion-flow.gif)
+
+A successful conversion exposes the normalized channels and both CSS output forms:
+
+![Converted color result](docs/media/screenshots/demo-converted.png)
+
+Malformed input is rejected visibly instead of being coerced into an unexpected color:
+
+![Invalid color validation state](docs/media/screenshots/demo-validation.png)
+
+The untouched initial state is also kept at [`docs/media/screenshots/demo-default.png`](docs/media/screenshots/demo-default.png). These media files are reproducibly captured by [`scripts/capture-doc-media.sh`](scripts/capture-doc-media.sh) and the [`Documentation Media`](.github/workflows/docs-media.yml) workflow whenever the demo, converter, or capture tooling changes.
+
+## API reference
+
+### `normalize_hex_color(string $hex): string`
+
+Validates the input, expands 3/4-digit syntax, removes the optional `#`, and returns lowercase 6/8-digit hex.
+
+### `hex2rgba_components(string $hex): array`
+
+Returns red, green, blue, normalized alpha, and whether alpha existed in the original input.
+
+### `hex2rgb(string $hex): string`
+
+Preserves the original tutorial API and returns comma-separated RGB channels.
+
+### `hex2rgba(string $hex, ?float $alpha = null): string`
+
+Returns legacy-compatible `rgba(r, g, b, a)` syntax.
+
+### `hex2css(string $hex, ?float $alpha = null): string`
+
+Returns modern `rgb(r g b / a)` syntax.
+
+## A small design note
+
+If your source color already lives entirely in CSS, keep the transformation in CSS. If PHP owns the color as application data, validate it in PHP and emit a normalized CSS value. That keeps responsibility at the layer where the data actually lives.
+
+## License
+
+See [`LICENSE`](LICENSE).
+
+---
+
+Created by [@agustealo](https://github.com/agustealo).
