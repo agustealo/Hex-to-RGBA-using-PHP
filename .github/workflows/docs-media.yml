@@ -47,7 +47,7 @@ jobs:
 
       - name: Commit refreshed media
         run: |
-          if git diff --quiet -- docs/media; then
+          if [ -z "$(git status --porcelain -- docs/media)" ]; then
             echo 'Documentation media is already current.'
             exit 0
           fi
