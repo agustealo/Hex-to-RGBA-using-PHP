@@ -1,4 +1,4 @@
-![Hex to RGBA using PHP project banner](docs/media/hex-to-rgba-banner.webp)
+![Hex to RGBA using PHP project banner](docs/media/hex-to-rgba-banner.svg)
 
 # Hex to RGB/RGBA with PHP
 
