@@ -1,3 +1,5 @@
+![Hex to RGBA using PHP project banner](docs/media/hex-to-rgba-banner.webp)
+
 # Hex to RGB/RGBA with PHP
 
 A small, framework-agnostic tutorial and utility for turning CSS hexadecimal colors into validated RGB/RGBA values with PHP.
